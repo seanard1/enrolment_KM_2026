@@ -1,337 +1,160 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Hamilton School Capacity Map</title>
-
-<link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    crossorigin=""
->
-
-<style>
-:root{
-    --header:#2c3e50;
-    --blue:#3498db;
-    --border:#dcdcdc;
-}
-
-*{
-    box-sizing:border-box;
-}
-
-body{
-    margin:0;
-    font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
-    background:#fff;
-}
-
-#app{
-    width:100%;
-}
-
-.header-bar{
-    background:var(--header);
-    color:#fff;
-    padding:15px 20px;
-    display:flex;
-    flex-wrap:wrap;
-    gap:15px;
-    justify-content:space-between;
-    align-items:center;
-    box-shadow:0 2px 5px rgba(0,0,0,.25);
-    z-index:1000;
-}
-
-.controls{
-    display:flex;
-    align-items:center;
-    gap:12px;
-    flex-wrap:wrap;
-}
-
-.search-box{
-    width:300px;
-    max-width:100%;
-    padding:8px 10px;
-    border:none;
-    border-radius:4px;
-    font-size:14px;
-}
-
-#yearLabel{
-    color:var(--blue);
-    font-weight:700;
-    min-width:100px;
-}
-
-#map{
-    width:100%;
-    height:700px;
-}
-
-.info.legend{
-    background:#fff;
-    padding:15px;
-    border-radius:8px;
-    border:1px solid var(--border);
-    box-shadow:0 0 15px rgba(0,0,0,.2);
-    color:#333;
-    font-size:13px;
-}
-
-.legend h4{
-    margin:0 0 10px;
-}
-
-.legend-item{
-    display:flex;
-    align-items:center;
-    margin-bottom:6px;
-}
-
-.legend-color{
-    width:16px;
-    height:16px;
-    border-radius:50%;
-    margin-right:10px;
-    border:1px solid #666;
-}
-
-.size-demo{
-    border-radius:50%;
-    border:1px solid #666;
-    background:#ddd;
-    margin-right:10px;
-    display:inline-block;
-}
-
-hr{
-    border:none;
-    border-top:1px solid #eee;
-    margin:10px 0;
-}
-
-@media (max-width:768px){
-
-    .header-bar{
-        align-items:flex-start;
-    }
-
-    .search-box{
-        width:100%;
-    }
-
-    #map{
-        height:600px;
-    }
-}
-</style>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
-
-<!-- Contains: window.schoolData = [...] -->
-<script src="data.js" defer></script>
-
-<script defer>
-document.addEventListener('DOMContentLoaded', init);
-
-function init(){
-
-    if(!window.schoolData){
-        document.getElementById('map').innerHTML =
-            '<div style="padding:20px">Unable to load school data.</div>';
-        return;
-    }
-
-    const data = window.schoolData;
-
-    const years = [...new Set(data.map(d => d.year))].sort();
-
-    const map = L.map('map').setView([43.2557, -79.8711], 11);
-
-    L.tileLayer(
-        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        {
-            attribution:
-            '&copy; OpenStreetMap contributors'
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>School Enrolment Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="data.js"></script>
+    <style>
+        #blox-map-container { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .header-bar { 
+            background: #2c3e50; 
+            color: white; 
+            padding: 15px 25px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            position: relative;
+            z-index: 1000;
         }
-    ).addTo(map);
-
-    let markers = [];
-
-    const slider = document.getElementById('yearSlider');
-    const yearLabel = document.getElementById('yearLabel');
-    const search = document.getElementById('searchBox');
-
-    slider.max = years.length - 1;
-    slider.value = years.length - 1;
-
-    function pressureColor(value){
-
-        if(value >= 1.2) return '#d73027';
-        if(value >= 1.0) return '#fc8d59';
-        if(value >= 0.8) return '#fee08b';
-
-        return '#91cf60';
-    }
-
-    function draw(){
-
-        markers.forEach(m => map.removeLayer(m));
-        markers = [];
-
-        const selectedYear =
-            years[Number(slider.value)];
-
-        yearLabel.textContent = selectedYear;
-
-        const searchTerm =
-            search.value.trim().toLowerCase();
-
-        const filtered = data.filter(row => {
-
-            if(row.year !== selectedYear){
-                return false;
-            }
-
-            if(
-                searchTerm &&
-                !row.school.toLowerCase().includes(searchTerm)
-            ){
-                return false;
-            }
-
-            return true;
-        });
-
-        filtered.forEach(row => {
-
-            const radius =
-                Math.max(
-                    5,
-                    Math.min(
-                        25,
-                        (row.portables || 0) + 5
-                    )
-                );
-
-            const marker = L.circleMarker(
-                [row.lat,row.lng],
-                {
-                    radius,
-                    fillColor:
-                        pressureColor(row.pressure),
-                    color:'#333',
-                    weight:1,
-                    fillOpacity:.8
-                }
-            );
-
-            marker.bindPopup(`
-                <strong>${row.school}</strong><br>
-                Year: ${row.year}<br>
-                Enrolment: ${row.enrolment}<br>
-                Capacity: ${row.capacity}<br>
-                Pressure: ${(row.pressure*100).toFixed(1)}%<br>
-                Portables: ${row.portables || 0}<br>
-                Portapaks: ${row.Portapaks || 0}
-            `);
-
-            marker.addTo(map);
-            markers.push(marker);
-        });
-    }
-
-    slider.addEventListener('input', draw);
-    search.addEventListener('input', draw);
-
-    addLegend(map);
-    draw();
-}
-
-function addLegend(map){
-
-    const legend = L.control({position:'bottomright'});
-
-    legend.onAdd = function(){
-
-        const div =
-            L.DomUtil.create(
-                'div',
-                'info legend'
-            );
-
-        div.innerHTML = `
-            <h4>Capacity Pressure</h4>
-
-            <div class="legend-item">
-                <span class="legend-color"
-                    style="background:#d73027"></span>
-                120%+
-            </div>
-
-            <div class="legend-item">
-                <span class="legend-color"
-                    style="background:#fc8d59"></span>
-                100-119%
-            </div>
-
-            <div class="legend-item">
-                <span class="legend-color"
-                    style="background:#fee08b"></span>
-                80-99%
-            </div>
-
-            <div class="legend-item">
-                <span class="legend-color"
-                    style="background:#91cf60"></span>
-                Under 80%
-            </div>
-        `;
-
-        return div;
-    };
-
-    legend.addTo(map);
-}
-</script>
-
+        #map { height: 700px; width: 100%; background: #fff; }
+        .search-box { padding: 8px; border-radius: 4px; border: none; width: 280px; font-size: 14px; color: #333; }
+        .slider-container { display: flex; align-items: center; gap: 15px; }
+        #yLabel { color: #3498db; font-weight: bold; font-size: 1.2em; min-width: 100px; }
+        .info.legend {
+            background: white;
+            padding: 15px;
+            line-height: 1.5;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            font-size: 13px;
+            color: #333;
+            border: 1px solid #ccc;
+        }
+        .legend h4 { margin: 0 0 10px 0; font-size: 15px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .legend-item { display: flex; align-items: center; margin-bottom: 5px; }
+        .legend-color { width: 16px; height: 16px; border-radius: 50%; margin-right: 10px; border: 1px solid #666; }
+        .size-demo { background: #ddd; border: 1px solid #666; border-radius: 50%; margin-right: 10px; display: inline-block; }
+        hr { border: 0; border-top: 1px solid #eee; margin: 10px 0; }
+    </style>
 </head>
-
 <body>
 
-<div id="app">
-
+<div id="blox-map-container" style="position: relative;">
     <div class="header-bar">
-
-        <div class="controls">
+        <div class="slider-container">
             <strong>School Year:</strong>
-
-            <input
-                type="range"
-                id="yearSlider"
-                min="0"
-                value="0"
-            >
-
-            <span id="yearLabel"></span>
+            <input type="range" id="ySlider" min="0" max="9" value="9">
+            <span id="yLabel">2024-2025</span>
         </div>
-
-        <input
-            type="text"
-            id="searchBox"
-            class="search-box"
-            placeholder="Search school name..."
-        >
-
+        <input type="text" id="mSearch" class="search-box" placeholder="Search school name...">
     </div>
-
     <div id="map"></div>
-
 </div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script> 
+<script>
+(function() {
+    const years = ['2015-2016','2016-2017','2017-2018','2018-2019','2019-2020','2020-2021','2021-2022','2022-2023','2023-2024','2024-2025'];
+
+    const map = L.map('map').setView([43.255, -79.87], 11);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    const groups = {
+        "df_HWDSB_Elementary": L.layerGroup().addTo(map),
+        "df_HWDSB_Secondary": L.layerGroup().addTo(map),
+        "df_HWCDSB_Elementary": L.layerGroup().addTo(map),
+        "df_HWCDSB_Secondary": L.layerGroup().addTo(map)
+    };
+
+    L.control.layers(null, {
+        "Public Elementary": groups["df_HWDSB_Elementary"],
+        "Public Secondary": groups["df_HWDSB_Secondary"],
+        "Catholic Elementary": groups["df_HWCDSB_Elementary"],
+        "Catholic Secondary": groups["df_HWCDSB_Secondary"]
+    }, { collapsed: false }).addTo(map);
+
+    function getColor(p) {
+        if (p <= 0.85) return "#2c7bb6";
+        if (p <= 0.95) return "#abd9e9";
+        if (p <= 1.00) return "#ffffbf";
+        if (p <= 1.10) return "#fdae61";
+        return "#d7191c";
+    }
+
+    function getRadius(enrol) {
+        return Math.sqrt(enrol) * 0.7;
+    }
+
+    function update() {
+        Object.values(groups).forEach(g => g.clearLayers());
+        const yr = years[document.getElementById('ySlider').value];
+        
+        data.filter(d => d.year === yr).forEach(d => {
+            if (groups[d.layer]) {
+                const circle = L.circleMarker([d.lat, d.lng], {
+                    radius: getRadius(d.enrolment),
+                    fillColor: getColor(d.pressure),
+                    color: "#333", weight: 0.5, fillOpacity: 0.8
+                });
+                
+                circle.bindPopup(`
+                    <div style="font-size:14px;">
+                        <strong style="font-size:15px;">${d.school}<\/strong><br>
+                        <b>Year:<\/b> ${d.year}<br>
+                        <b>Enrolment:<\/b> ${d.enrolment}<br>
+                        <b>Capacity:<\/b> ${d.capacity}<br>
+                        <b>Pressure:<\/b> <span style="color:${getColor(d.pressure)}; font-weight:bold;">${(d.pressure * 100).toFixed(1)}%<\/span>
+                    </div>
+                `);
+                circle.addTo(groups[d.layer]);
+            }
+        });
+    }
+
+    const legend = L.control({ position: 'bottomright' });
+    legend.onAdd = function () {
+        const div = L.DomUtil.create('div', 'info legend');
+        div.innerHTML = `
+            <h4>Map Legend<\/h4>
+            <strong>Utilization (colour)<\/strong>
+            <div class="legend-item"><div class="legend-color" style="background:#d7191c"><\/div> >110% (crowded)<\/div>
+            <div class="legend-item"><div class="legend-color" style="background:#fdae61"><\/div> 100-110% (over)<\/div>
+            <div class="legend-item"><div class="legend-color" style="background:#ffffbf"><\/div> 95-100% (full)<\/div>
+            <div class="legend-item"><div class="legend-color" style="background:#2c7bb6"><\/div> <85% (under)<\/div>
+            <hr>
+            <strong>Enrolment (Size)<\/strong>
+            <div class="legend-item"><div class="size-demo" style="width:10px; height:10px;"><\/div> smaller school<\/div>
+            <div class="legend-item"><div class="size-demo" style="width:25px; height:25px;"><\/div> larger school<\/div>
+        `;
+        return div;
+    };
+    legend.addTo(map);
+
+    document.getElementById('ySlider').oninput = (e) => {
+        document.getElementById('yLabel').innerText = years[e.target.value];
+        update();
+    };
+
+    document.getElementById('mSearch').oninput = (e) => {
+        const v = e.target.value.toLowerCase();
+        if (v.length < 3) return;
+        const match = data.find(d => d.school.toLowerCase().includes(v));
+        if (match) {
+            map.flyTo([match.lat, match.lng], 14);
+            L.popup().setLatLng([match.lat, match.lng])
+                .setContent("<b>" + match.school + "<\/b>")
+                .openOn(map);
+        }
+    };
+
+    update();
+})();
+</script>
 
 </body>
 </html>
